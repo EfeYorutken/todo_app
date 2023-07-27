@@ -9,5 +9,4 @@ lua todoL.lua
 - -s _indexOfItem_ : marks the item at index of _indexOfItem_ as done
 - -r _indexOfItem_ : remove the item at index of _indexOfItem_
 
-# TODO
-- fix strike out (-s)
+
