@@ -1,5 +1,5 @@
 -- change this to where your todo list is located
-local path = "C:\\Users\\user\\Desktop\\volt\\todo.md"
+local path = ""
 
 -- splits a string into a table based on substring "char"
 -- NOTE : if #char > 1 this function breaks
@@ -44,21 +44,10 @@ end
 -- then sets the line indicated by the index in the tab table to be new value (with the x)
 local set_as_done = function(tab, index)
 	local target_line = tab[index]
+	local temp_tab = tab
 	local temp = split(target_line, " ")
-	local new_line = temp[1] .. " " .. temp[2] .. "x" .. temp[3] .. " " .. table.concat(temp, 4,#temp)
-	return new_line
-end
-
--- get file content
--- calls set_as_done to create the content except for the change to the striken out item
--- re writes the file with the striken out item
-local strike_out = function(path, index)
-	local t = get_inf_from_file(path,"\n")
-	t = set_as_done(t,index)
-	local t2 = table.concat(t, "\n")
-	local file = io.open(path, "w")
-	file:write(t2)
-	io.close()
+	local new_line = temp[1] .. " " .. temp[2] .. "x" .. temp[3] .. " " .. table.concat(temp, 4,#temp)	temp_tab[index] = new_line
+	return temp_tab
 end
 
 -- given a path to a file and a table
@@ -76,6 +65,20 @@ local write_table_to_file = function(path, tab)
 	io.close()
 end
 
+-- get file content
+-- calls set_as_done to create the content except for the change to the striken out item
+-- re writes the file with the striken out item
+local strike_out = function(path, index)
+	local t = get_inf_from_file(path,"\n")
+	t = set_as_done(t,index)
+	--t = split(t,"\n")
+	write_table_to_file(path,t)
+	--local t2 = table.concat(t, "\n")
+	--local file = io.open(path, "w")
+	--file:write(t)
+	--io.close()
+end
+
 -- gets the content of the file and prints the content with numbers indicating indexes of the items
 local print_content = function(path)
 	local f = get_inf_from_file(path,"\n")
@@ -87,11 +90,7 @@ end
 --given some amount of new items, appends them to the end of the file
 local add_to_file = function(path, str, char)
 	local tab = split(str, char)
-	local file =  io.open(path, "a")
-	for k,elem in pairs(tab) do
-		file:write("- [ ] " .. elem .. "\n")
-	end
-	io.close()
+	write_table_to_file(path,tab)
 end
 
 -- re-writes all items in the file to the file unless the items index is the one in the paramater
