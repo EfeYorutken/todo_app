@@ -1,125 +1,100 @@
 -- change this to where your todo list is located
 local path = ""
 
--- splits a string into a table based on substring "char"
--- NOTE : if #char > 1 this function breaks
-local split = function(string, char)
+--splits the string "str" by character "char" and returns the result as as table
+local split = function(str,char)
+	local res = {}
 	local temp = ""
-	local res = {}
-
-	for i=1,#string do
-		if string.sub(string,i,i) ~= char then
-			temp = temp .. string.sub(string,i,i)
-		else
-			res[#res +1] = temp
+	for i = 1, #str do
+		if string.sub(str,i,i) == char then
+			res[#res + 1] = temp
 			temp = ""
+		else
+			temp = temp .. string.sub(str,i,i)
 		end
 	end
-	res[#res +1] = temp
-	temp = ""
-
+	res[#res + 1] = temp
 	return res
-
 end
 
--- returns table, each element of which is a part of the files content
--- seperated by "split_char"
--- used for split the file line by line
+--reads the content of the file indicated byt "path", splits is by "split_char"
+--and returnst the result as a table
 local get_inf_from_file = function(path,split_char)
-	local file = io.open(path, "r")
-	local text = file:read("*a")
-	io.close()
-	return split(text, "\n")
+	local f = io.open(path,"r")
+	local content = f:read("*a")
+	io.close(f)
+	return split(content,split_char)
 end
 
--- here is how an "un-checked" item is written in an md file
--- - [ ] this is un-checked
--- and here is how the check version is written
--- - [x] this is un-checked
--- when splitted from the space character you get the following table
--- {"-","[","]","this","is"...}
--- this method essencially takes in a string, splits it from space
--- re-creates the original string by adding the space character back
--- except for the space between [ and ] characters which instead of a space is an x
--- then sets the line indicated by the index in the tab table to be new value (with the x)
-local set_as_done = function(tab, index)
-	local target_line = tab[index]
-	local temp_tab = tab
-	local temp = split(target_line, " ")
-	local new_line = temp[1] .. " " .. temp[2] .. "x" .. temp[3] .. " " .. table.concat(temp, 4,#temp)	temp_tab[index] = new_line
-	return temp_tab
-end
-
--- given a path to a file and a table
--- if the file exists, empties the file
--- at the same time if the file does not exist creates an empty file
--- appends the content of the table to the file
+--given a table, overwritest the content of the file indicated by "paht"
+--with elements of "tab" at each line
 local write_table_to_file = function(path, tab)
-	local file = io.open(path, "w")
-	file:write("")
-	io.close()
-	local file = io.open(path, "a")
-	for _,v in pairs(tab) do
-		file:write(v .. "\n")
-	end
-	io.close()
+	local file = io.open(path,"w")
+	file:write(table.concat(tab,"\n"))
+	io.close(file)
 end
 
--- get file content
--- calls set_as_done to create the content except for the change to the striken out item
--- re writes the file with the striken out item
-local strike_out = function(path, index)
-	local t = get_inf_from_file(path,"\n")
-	t = set_as_done(t,index)
-	--t = split(t,"\n")
-	write_table_to_file(path,t)
-	--local t2 = table.concat(t, "\n")
-	--local file = io.open(path, "w")
-	--file:write(t)
-	--io.close()
+--transforms a line such as
+-- - [ ] important todo item
+-- to
+-- - [x] important todo item
+local strike_out = function(path,index)
+	local content = get_inf_from_file(path,"\n")
+	local target = split(content[index]," ")
+	local new_line = target[1] .. " " .. target[2] .. "x" .. table.concat(target," ",3)
+	content[index] = new_line
+	write_table_to_file(path,content)
 end
 
--- gets the content of the file and prints the content with numbers indicating indexes of the items
-local print_content = function(path)
-	local f = get_inf_from_file(path,"\n")
-	for k,v in pairs(f) do
-		print(k .. "\t" .. v)
-	end
-end
-
---given some amount of new items, appends them to the end of the file
-local add_to_file = function(path, str, char)
-	local tab = split(str, char)
-	write_table_to_file(path,tab)
-end
-
--- re-writes all items in the file to the file unless the items index is the one in the paramater
-local remove_from_file = function(path, index)
+-- reads the content of the file indicated by "path" into a table
+-- creates a new table without the element at "index"
+-- over writes the content of the file with the new table
+local remove = function(path,index)
 	local res = {}
-	local old = get_inf_from_file(path,"\n")
-	for i = 1, #old do
+	local t = get_inf_from_file(path,"\n")
+	for i = 1,#t do
 		if i ~= index then
-			res[#res +1 ] = old[i]
+			res[#res + 1] = t[i]
 		end
 	end
-	write_table_to_file(path, res)
+	write_table_to_file(path,res)
 end
 
--- we can display todo, strike out todo, write the stike out version to file, add to list, remove from list
+--appends the elements of the table "tab" to the end of the file indicated by
+--"path"
+local add = function(path,tab)
+	local res = {}
+	for _,v in pairs(get_inf_from_file(path,"\n"))do
+		res[#res + 1] = v
+	end
+
+	for _,v in pairs(tab)do
+		res[#res + 1] = "- [ ] " .. v
+	end
+
+	write_table_to_file(path,res)
+end
 
 local main = function(args)
 	local command = args[1]
-	local text = table.concat(args, " ", 2,#args)
+	local rest = table.concat(args," ",2)
 	if command == "-a" then
-		add_to_file(path, text, ",")
-	elseif command == "-s" then	
-		strike_out(path, tonumber(text))
-	elseif command == "-r" then	
-		remove_from_file(path, tonumber(text))
+		add(path,split(rest,","))
+	elseif command == "-s" then
+		strike_out(path,tonumber(split(rest," ")[1]))
+	elseif command == "-r" then
+		remove(path,tonumber(split(rest," ")[1]))
 	elseif command == "-h" then
-		print("-a : add\n-s : mark task as done\n-r : remove a task (delete)\n-h : display this menu\nnill : display todos")
+		print("<nothing> \t prints todos")
+		print("-a <element1,element2...> \t adds new element1,element2 and so on (items must be seperated by commas)")
+		print("-s <index> \t marks item at index as done")
+		print("-r <index> \t removes item at index <index>")
 	else
-		print_content(path)
+    -- makes no sense but some how works
+    local t = split(table.concat(get_inf_from_file(path),"\n"),"\n")
+    for i = 1, #t do
+      print(i,"\t",t[i])
+    end
 	end
 end
 
